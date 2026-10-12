@@ -5013,12 +5013,14 @@ dependencies = [
  "pollster 0.4.0",
  "rfd",
  "serde_json",
+ "windows",
  "winresource",
  "wordcraft-control-key",
  "wordcraft-doc",
  "wordcraft-engine",
  "wordcraft-fonts",
  "wordcraft-ui-egui",
+ "zbus",
 ]
 
 [[package]]
@@ -5054,7 +5056,9 @@ name = "wordcraft-docbin"
 version = "0.5.0"
 dependencies = [
  "cfb",
+ "image",
  "log",
+ "miniz_oxide 0.8.9",
  "proptest",
  "serde_json",
  "thiserror 2.0.21",

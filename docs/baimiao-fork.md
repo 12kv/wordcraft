@@ -120,9 +120,29 @@ the website's persistent unoserver service or browser timings, and memory was no
 lower for WordCraft. Keep the existing formal conversion service while developing the local
 browser option and expanding the acceptance corpus.
 
+## Upstream sync (2026-10-12)
+
+The local development branch merged upstream main `199ac88a2e9a3cff760ea491545c0f59ebc882b6` (11 new upstream commits
+since the original fork baseline). The three existing fork commits remain in history;
+only progress/localization documentation needed conflict resolution. Chinese font inputs,
+document fallbacks and their regression test remain in place.
+
+The new upstream OfficeArt flags and table-resize pointer condition use equivalent match
+guards/Boolean expressions in this fork to pass the pinned Rust 1.95 strict Clippy gate.
+
+The sync includes legacy DOC picture/shape import, table resizing, preserved TOC result
+ranges/custom XML stores, accessibility animation settings and additional interface/proofing
+languages. Earlier visual and soffice comparisons above refer to the original baseline;
+they are not visual acceptance of this synchronized tree. The dedicated conversion-only
+WASM module and Baimiao result-preview integration are still follow-up development.
+
+The development branch and modifications remain local. The GitHub fork has not received
+these commits, and no upstream pull request or deployment was created.
+
 ## Revision history
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-12 | minor | Synchronize upstream main 199ac88 and preserve local fork changes; distinguish prior visual results from the updated source tree |
 | 2026-10-12 | minor | Normalize synthetic font styles and compare actual browser/native PDFs with soffice; qualify pagination and startup benchmarks |
 | 2026-10-12 | major | Fork baseline, toolchain, font input and browser regression procedure |

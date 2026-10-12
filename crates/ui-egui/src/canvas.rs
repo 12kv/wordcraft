@@ -95,6 +95,8 @@ pub struct CanvasState {
     pub table_tool: Option<crate::table_pen::TableTool>,
     /// The Draw Table stroke (or eraser press) in progress.
     pub(crate) table_stroke: Option<crate::table_pen::PenStroke>,
+    /// A table border or the table's resize handle being dragged (`table_resize`).
+    pub(crate) table_resize: Option<crate::table_resize::ResizeDrag>,
     /// The last key ran an Alt shortcut: the text its key sends (it may arrive a frame later)
     /// isn't typed. The next key press clears it.
     pub(crate) swallow_text: bool,
@@ -155,6 +157,7 @@ impl Default for CanvasState {
             balloon_rects: Vec::new(),
             table_tool: None,
             table_stroke: None,
+            table_resize: None,
             link_from: None,
             a11y: Default::default(),
         }
@@ -479,12 +482,21 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
     app.canvas.canvas_rect = Some(area);
     // Ctrl/⌘ + wheel (and trackpad pinch) zooms the document, like Word. egui reports both as a
     // zoom factor and doesn't scroll for them. Start from the shown scale so fit modes zoom too.
-    let zoom_delta = ui.input(|i| i.zoom_delta());
+    // With animation effects off the wheel zooms in whole steps, each at once.
+    let animate = app.animations_on();
+    let opts = ui.ctx().options(|o| o.input_options);
+    let zoom_delta = ui.input(|i| app.canvas.wheel.zoom(i, &opts, animate));
     if (zoom_delta - 1.0).abs() > 1e-3 && ui.rect_contains_pointer(area) {
         let pct = (app.canvas.scale / PX_PER_PT * zoom_delta * 100.0).clamp(10.0, 500.0);
         let _ = app.run("view.zoom", json!({"value": pct}));
     }
     let geo = geometry(app, &layout, area.size() - vec2(14.0, 0.0));
+    // The status bar's zoom readout and slider were laid out before this, from the last frame's
+    // scale: after a zoom change draw again at once, so they follow in the next frame rather than
+    // whenever something else next repaints (the caret's blink).
+    if (geo.scale - app.canvas.scale).abs() > 1e-6 {
+        ui.ctx().request_repaint();
+    }
     app.canvas.scale = geo.scale;
     sync_fit_zoom(app, geo.scale);
     // Zooming or resizing reflowed the pages into a different number of columns: the caret's page
@@ -514,11 +526,11 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
     let mut origin = area.min;
     let mut ui_area = ui.new_child(egui::UiBuilder::new().max_rect(area));
     // The canvas scrolls itself on wheel/touchpad input (crate::scroll): touchpads 1:1 with
-    // momentum, wheel notches eased in. Applied before drawing, so it shows this frame.
+    // momentum, wheel notches eased in (or all at once with animation effects off). Applied
+    // before drawing, so it shows this frame.
     let hovered = ui.rect_contains_pointer(area) && ui.ctx().dragged_id().is_none();
     let notch = crate::scroll::notch_px(app.canvas.scale / PX_PER_PT);
-    let opts = ui.ctx().options(|o| o.input_options);
-    let wheel_delta = ui.input(|i| app.canvas.wheel.frame(i, &opts, hovered, notch, area.height()));
+    let wheel_delta = ui.input(|i| app.canvas.wheel.frame(i, &opts, hovered, notch, area.height(), animate));
     // Dragging a selection near the viewport's edge scrolls on (#688): from a crawl at the margin
     // to full speed at the edge, through the same offset the wheel writes.
     let (down, pointer, dt) = ui.input(|i| (i.pointer.primary_down(), i.pointer.latest_pos(), i.stable_dt));
@@ -535,6 +547,8 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
     let mut scroll_area = egui::ScrollArea::both()
         .id_salt("canvas_scroll")
         .auto_shrink([false, false])
+        // Bringing the caret into view glides there, or jumps with animation effects off.
+        .animated(animate)
         .scroll_source(egui::scroll_area::ScrollSource { mouse_wheel: false, ..Default::default() });
     if delta != egui::Vec2::ZERO {
         let before = app.canvas.scroll_offset;
@@ -571,29 +585,13 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
             let (band_top, band_bot) = geo.bands.get(i).copied().unwrap_or((0.0, sr.height()));
             let scale_px = (geo.scale * ppp).min(max_tex / page.w.max(1.0)).min(max_tex / page.h.clamp(1.0, 1e6)).max(0.05);
             let key = page_key(app, page, scale_px, dim_body);
-            let fresh = app.canvas.textures.get(&i).is_some_and(|(k, _)| *k == key);
-            let current_scale = geo.scale * ppp;
-            let visual_sr = if fresh && (scale_px - current_scale).abs() <= 0.0001_f32.max(current_scale.abs() * 0.0001) {
-                app.canvas.textures.get(&i).map_or(sr, |(_, tex)| texel_aligned_rect(sr, tex.size_vec2(), ppp))
-            } else {
-                sr
-            };
-            rects.push(visual_sr);
+            let mut fresh = app.canvas.textures.get(&i).is_some_and(|(k, _)| *k == key);
             // Hide White Space shows only a band of the page; everything below paints into it.
-            let band =
-                Rect::from_min_max(pos2(visual_sr.min.x - 4.0, visual_sr.min.y + band_top), pos2(visual_sr.max.x + 4.0, visual_sr.min.y + band_bot));
-            if !band.intersects(ui.clip_rect().expand(200.0)) {
-                continue;
-            }
-            let painter = if band_top <= 0.0 && band_bot >= sr.height() {
-                painter.clone()
-            } else {
-                painter.with_clip_rect(painter.clip_rect().intersect(band))
-            };
-            // Shadow and paper.
-            painter.rect_filled(visual_sr.translate(vec2(0.0, 2.0)).expand(1.5), 1.0, t.page_shadow);
-            painter.rect_filled(visual_sr, 0.0, if dark_page { Color32::from_gray(dark_paper) } else { Color32::WHITE });
-            if !fresh && (rendered < 2 || !app.canvas.textures.contains_key(&i) && rendered < 4) {
+            let band_of = |r: Rect| Rect::from_min_max(pos2(r.min.x - 4.0, r.min.y + band_top), pos2(r.max.x + 4.0, r.min.y + band_bot));
+            let visible = band_of(sr).intersects(ui.clip_rect().expand(200.0));
+            // Render before placing the page: a page re-rendered in this frame (a zoom step, an
+            // edit) then sits on the pixel grid in this frame too, rather than a frame later.
+            if visible && !fresh && (rendered < 2 || !app.canvas.textures.contains_key(&i) && rendered < 4) {
                 let mut opts = screen_render_options();
                 opts.display.marks = app.session.view.marks;
                 opts.display.always = app.session.prefs.marks;
@@ -620,9 +618,29 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                     }
                 }
                 rendered += 1;
-            } else if !fresh {
+                fresh = true;
+            } else if visible && !fresh {
                 ui.ctx().request_repaint();
             }
+            let current_scale = geo.scale * ppp;
+            let visual_sr = if fresh && (scale_px - current_scale).abs() <= 0.0001_f32.max(current_scale.abs() * 0.0001) {
+                app.canvas.textures.get(&i).map_or(sr, |(_, tex)| texel_aligned_rect(sr, tex.size_vec2(), ppp))
+            } else {
+                sr
+            };
+            rects.push(visual_sr);
+            if !visible {
+                continue;
+            }
+            let band = band_of(visual_sr);
+            let painter = if band_top <= 0.0 && band_bot >= sr.height() {
+                painter.clone()
+            } else {
+                painter.with_clip_rect(painter.clip_rect().intersect(band))
+            };
+            // Shadow and paper.
+            painter.rect_filled(visual_sr.translate(vec2(0.0, 2.0)).expand(1.5), 1.0, t.page_shadow);
+            painter.rect_filled(visual_sr, 0.0, if dark_page { Color32::from_gray(dark_paper) } else { Color32::WHITE });
             if let Some((_, tex)) = app.canvas.textures.get(&i) {
                 painter.image(tex.id(), visual_sr, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
             }
@@ -767,8 +785,11 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
                 let y0 = pr.min.y + (base - slot.y - slot.a) * s;
                 let y1 = pr.min.y + (base - slot.y + slot.d) * s;
                 let since = crate::now_ms() - app.canvas.caret_visible_since;
-                if ((since / 530.0) as u64).is_multiple_of(2) && focused {
-                    painter.line_segment([pos2(x, y0), pos2(x, y1)], Stroke::new(1.5, t.caret));
+                // The caret glides and fades like Word's (`caret_glide`).
+                let on = ((since / 530.0) as u64).is_multiple_of(2);
+                let look = crate::caret_glide::look(app, ui, content_origin, &geo, [pos2(x, y0), pos2(x, y1)], focused, since, on);
+                if look.opacity > 0.0 && focused {
+                    painter.line_segment(look.bar, Stroke::new(1.5, t.caret.gamma_multiply(look.opacity)));
                 }
                 if focused {
                     ui.ctx().request_repaint_after(std::time::Duration::from_millis(530 - (since as u64 % 530)));
@@ -794,14 +815,17 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
             let y1 = y0 + c.height * scale;
             let since = crate::now_ms() - app.canvas.caret_visible_since;
             let on = ((since / 530.0) as u64).is_multiple_of(2);
-            if app.session.sel.is_collapsed() && on && focused {
-                let bar = if c.width > 0.0 {
-                    // Turned text (a table cell's text direction): the caret lies across the page.
-                    [pos2(x, y0.round() + 0.5), pos2(x + c.width * scale, y0.round() + 0.5)]
-                } else {
-                    [pos2(x.round() + 0.5, y0), pos2(x.round() + 0.5, y1)]
-                };
-                painter.line_segment(bar, Stroke::new(1.5, caret_color));
+            let bar = if c.width > 0.0 {
+                // Turned text (a table cell's text direction): the caret lies across the page.
+                [pos2(x, y0.round() + 0.5), pos2(x + c.width * scale, y0.round() + 0.5)]
+            } else {
+                [pos2(x.round() + 0.5, y0), pos2(x.round() + 0.5, y1)]
+            };
+            // The caret glides and fades like Word's (`caret_glide`).
+            let shown = app.session.sel.is_collapsed() && focused;
+            let look = crate::caret_glide::look(app, ui, content_origin, &geo, bar, shown, since, on);
+            if shown && look.opacity > 0.0 {
+                painter.line_segment(look.bar, Stroke::new(1.5, caret_color.gamma_multiply(look.opacity)));
             }
             if focused {
                 ui.ctx().request_repaint_after(std::time::Duration::from_millis(530 - (since as u64 % 530)));
@@ -835,6 +859,7 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
         crate::objects::paint(app, &painter, &t, &layout, &rects, geo.scale);
         crate::ink::paint(app, &painter, &rects, &layout, geo.scale);
         crate::table_pen::paint(app, &painter, &t, &layout, &rects, geo.scale);
+        crate::table_resize::paint(app, &painter, &t, &layout, &rects, geo.scale);
         (resp, rects)
     });
     app.canvas.scroll_offset = out.state.offset;
@@ -921,6 +946,7 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
         let over_object = ui.input(|i| i.pointer.latest_pos()).and_then(|p| crate::objects::cursor(app, &layout, &rects, geo.scale, p));
         ui.ctx().set_cursor_icon(over_object.unwrap_or(egui::CursorIcon::Text));
     }
+    crate::table_resize::cursor(app, ui, &resp, &layout, &rects, geo.scale);
     crate::table_pen::cursor(app, ui, &resp);
     // While "Save changes?" is up, keys answer it rather than edit the document behind it.
     if app.canvas.focused && !matches!(app.dialog, Some(crate::dialogs::Dialog::SaveChanges { .. })) {
@@ -1304,6 +1330,10 @@ fn mouse(app: &mut WordApp, ui: &Ui, resp: &egui::Response, rects: &[Rect], layo
     if let Some(at) = object_pointer
         && crate::objects::pointer(app, ui, resp, rects, layout, scale, at)
     {
+        return;
+    }
+    // A press on a table border (or the table's resize handle) drags it instead of the caret.
+    if crate::table_resize::pointer(app, ui, resp, rects, layout, scale) {
         return;
     }
     let Some(p) = pointer else { return };
@@ -1954,7 +1984,8 @@ fn context_menu(app: &mut WordApp, ui: &mut Ui) {
             .and_then(|v| v.as_array())
             .map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
             .unwrap_or_default();
-        ui.label(egui::RichText::new(issue.get("message").and_then(|m| m.as_str()).unwrap_or("")).small().weak());
+        // English rules' messages are catalog keys; Polish rules already explain in Polish.
+        ui.label(egui::RichText::new(tl!(issue.get("message").and_then(|m| m.as_str()).unwrap_or(""))).small().weak());
         if sugg.is_empty() {
             ui.label(egui::RichText::new(tl!("(no suggestions)")).italics());
         }
