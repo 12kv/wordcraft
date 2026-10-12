@@ -254,10 +254,10 @@ fn fallback_cache_is_dropped_when_a_face_loads_by_its_legacy_family_name() {
 fn fallback_reads_each_installed_font_file_once_however_many_characters_miss() {
     // #605: every distinct character no font covers read every installed font file again.
     let dir = font_dir("coverage");
-    // The installed Regular also maps U+30000 (no bundled font does): its last cmap group, the
+    // The installed Regular also maps U+100000 (supplementary private-use area B): its last cmap group, the
     // single character U+1F916, moved there (still the highest, so the groups stay sorted).
     let mut regular = renamed("SourceSans3-Regular.ttf");
-    let (from, to) = ([0x0001_F916_u32.to_be_bytes(); 2].concat(), [0x0003_0000_u32.to_be_bytes(); 2].concat());
+    let (from, to) = ([0x0001_F916_u32.to_be_bytes(); 2].concat(), [0x0010_0000_u32.to_be_bytes(); 2].concat());
     let mut patched = 0;
     while let Some(at) = regular.windows(from.len()).position(|w| w == from) {
         regular[at..at + to.len()].copy_from_slice(&to);
@@ -267,10 +267,11 @@ fn fallback_reads_each_installed_font_file_once_however_many_characters_miss() {
     std::fs::write(dir.join("Sysfont-Regular.ttf"), regular).unwrap();
     let db = FontDb::with_font_dirs(vec![dir]);
     let latin = db.face(FALLBACK_FAMILY, "Regular");
-    let found = db.fallback_for('\u{30000}', latin.id()).expect("the installed font maps it");
+    let found = db.fallback_for('\u{100000}', latin.id()).expect("the installed font maps it");
     assert_eq!((found.family.as_str(), found.style.as_str()), (FAMILY, "Regular"));
-    // 2,000 distinct characters nothing maps: the index answers, no file is read again.
-    for cp in 0x30001..0x30001 + 2000 {
+    // CJK additions must not turn the cache-miss fixture into covered characters. Use 2,000
+    // distinct private-use characters nothing maps: the index answers, no file is read again.
+    for cp in 0x100001..0x100001 + 2000 {
         let c = char::from_u32(cp).unwrap();
         assert!(db.fallback_for(c, latin.id()).is_none());
     }

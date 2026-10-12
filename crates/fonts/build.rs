@@ -1,8 +1,9 @@
 //! Optional craft-fonts build input (https://github.com/storytold/craft-fonts, recipe from its
 //! `docs/integration.md`). With `CRAFT_FONTS_DIR=<checkout>` the fonts in its
 //! `fonts/manifest.txt` are embedded as `CRAFT_FONTS`; unset, `CRAFT_FONTS` is empty. Web
-//! (wasm32) builds embed only the UI face, BIZ UDPGothic Regular, to stay within the web size
-//! budget. With `CRAFT_FONTS_REQUIRED` (releases), a native build also fails when the checkout
+//! (wasm32) builds embed BIZ UDPGothic Regular and the regular Simplified Chinese faces so the
+//! interface, document canvas and PDF export can share complete CJK coverage. With
+//! `CRAFT_FONTS_REQUIRED` (releases), a build also fails when the checkout
 //! has no font for a CJK interface language (Japanese, Simplified Chinese), as an outdated pin
 //! once did (#241). It only reads the local checkout: no network.
 use std::fmt::Write as _;
@@ -18,8 +19,7 @@ fn main() {
                 src.push_str(&entries);
                 // Each CJK interface language needs its own face: without the Chinese one, Chinese
                 // menus fall back to the Japanese face and show boxes for simplified hanzi (#241).
-                let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").is_ok_and(|a| a == "wasm32");
-                if std::env::var_os("CRAFT_FONTS_REQUIRED").is_some() && !wasm {
+                if std::env::var_os("CRAFT_FONTS_REQUIRED").is_some() {
                     for s in REQUIRED_SCRIPTS.iter().filter(|s| !covered.iter().any(|c| c == *s)) {
                         println!("cargo::error=CRAFT_FONTS_DIR={}: no {s} font in fonts/manifest.txt (craft-fonts too old?)", dir.display());
                     }
@@ -30,6 +30,8 @@ fn main() {
             }
             Err(e) => println!("cargo::warning=building without craft-fonts: CRAFT_FONTS_DIR={}: {e}", dir.display()),
         }
+    } else if std::env::var_os("CRAFT_FONTS_REQUIRED").is_some() {
+        println!("cargo::error=CRAFT_FONTS_REQUIRED needs CRAFT_FONTS_DIR pointing to a craft-fonts checkout");
     }
     src.push_str("];\n");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").unwrap_or_default()).join("craft_fonts.rs");
@@ -38,7 +40,7 @@ fn main() {
     }
 }
 
-/// Scripts a release build (`CRAFT_FONTS_REQUIRED`, native) must embed a font for: the CJK
+/// Scripts a release build (`CRAFT_FONTS_REQUIRED`, native or web) must embed a font for: the CJK
 /// interface languages' (Japanese, Simplified Chinese).
 const REQUIRED_SCRIPTS: &[&str] = &["Jpan", "Hans"];
 
@@ -55,7 +57,8 @@ fn craft_fonts(dir: &std::path::Path) -> Result<(String, Vec<String>), String> {
         let [family, style, file, scripts, ..] = f.as_slice() else {
             return Err(format!("malformed manifest line: {line}"));
         };
-        if wasm && !(*family == "BIZ UDPGothic" && *style == "Regular") {
+        let chinese = scripts.split(',').any(|script| script.trim() == "Hans");
+        if wasm && !(*style == "Regular" && (*family == "BIZ UDPGothic" || chinese)) {
             continue;
         }
         let path = dir.join(file).canonicalize().map_err(|e| format!("{file}: {e}"))?;

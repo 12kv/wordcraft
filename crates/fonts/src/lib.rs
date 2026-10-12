@@ -361,6 +361,34 @@ mod tests {
     }
 
     #[test]
+    fn craft_fonts_chinese_documents_work_without_system_fonts() {
+        if CRAFT_FONTS.is_empty() {
+            eprintln!("skipped: built without craft-fonts (set CRAFT_FONTS_DIR to a checkout)");
+            return;
+        }
+        let chinese: Vec<_> = chinese_fonts().collect();
+        assert!(!chinese.is_empty(), "craft-fonts has Simplified Chinese fonts");
+        let db = FontDb::with_font_dirs(Vec::new());
+        db.set_system_fallback(false);
+        for cf in chinese {
+            let face = db.face(cf.family, cf.style);
+            assert_eq!(face.family, cf.family, "Chinese document fonts are registered");
+            for ch in "中文文档转换测试验证页图片章节长金额单元格这".chars() {
+                assert!(face.covers(ch), "{} lacks {ch}", cf.family);
+                assert_ne!(face.glyph_for(ch), 0, "{} renders {ch} as a missing glyph", cf.family);
+            }
+        }
+        // These simplified characters were boxes in the official web build. No OS font can
+        // make this regression pass, just as browsers cannot scan installed system fonts.
+        let latin = db.face(DEFAULT_FAMILY, "Regular");
+        for ch in "转验图节这".chars() {
+            let fallback = db.fallback_for(ch, latin.id()).expect("bundled fallback covers Simplified Chinese");
+            assert!(fallback.covers(ch));
+            assert_ne!(fallback.glyph_for(ch), 0);
+        }
+    }
+
+    #[test]
     fn works_without_craft_fonts() {
         // Always true without CRAFT_FONTS_DIR; with it, the bundled fonts must still all load.
         let db = FontDb::with_font_dirs(Vec::new());

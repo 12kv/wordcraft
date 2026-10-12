@@ -1,6 +1,6 @@
 # Localization parity with Microsoft Word
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-11 · **Change:** minor (font list shows fonts by their names in the interface language, #505; previously minor: Turkish interface added; previously major: first version; catalogs measured from `crates/ui-egui/src/i18n`, Word's languages from its bundle listing) · **Target:** Microsoft Word (Microsoft 365) for Mac 16.113.4
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-12 · **Change:** minor (web CJK fonts are required and Chinese document fonts registered without system fallback; previously minor: font list shows fonts by interface-language names, #505) · **Target:** Microsoft Word (Microsoft 365) for Mac 16.113.4
 
 Interface languages, script support and proofing per language. How translation works (catalog
 format, adding a language, clean-room rule): `crates/ui-egui/src/i18n/mod.rs`.
@@ -30,6 +30,17 @@ other ~18 languages Word ships, plus native-speaker review (human).
 - **Proofing: English only** (one dictionary, rule-based grammar, English hyphenation patterns).
 - Document scripts: shaping via HarfRust (HarfBuzz port) for every script; bidi (UAX #9) and Arabic
   shaping tested (#207); IME on all desktop platforms (winit fixes pending, #155–#164).
+
+## Browser CJK font input
+
+WebAssembly embeds BIZ UDPGothic Regular and the regular `Hans` faces from craft-fonts. Both
+the interface and document font database can use the Chinese input, including PDF export.
+`CRAFT_FONTS_REQUIRED=1` enforces the Japanese and Simplified Chinese font input on native and
+web builds; an absent checkout is a build error. The document regression uses no system fonts
+and checks the simplified characters that were missing in the official v0.5.0 browser bundle.
+This focused coverage does not establish Word-compatible typography or real-world DOCX fidelity.
+
+Local fork build and browser verification: [`baimiao-fork.md`](baimiao-fork.md).
 
 ## The twelve key languages
 
@@ -76,6 +87,7 @@ proofing is not included; terminology and checks: [`localization-tr.md`](localiz
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-12 | minor | Required web builds include Japanese and Simplified Chinese fonts; Chinese faces are registered for documents and tested without OS fonts |
 | 2026-10-11 | minor | Font dialog sets the Asian text font (`w:eastAsia`) and the Latin text font separately; the Asian list holds the installed Chinese, Japanese and Korean fonts by their interface-language names (#505) |
 | 2026-10-11 | minor | Font list shows installed fonts by their names in the interface language (宋体 for SimSun in Chinese, Japanese and Korean names likewise) and finds them by either name; a Chinese, Japanese or Korean font is stored as `w:eastAsia` too (#505) |
 | 2026-10-11 | minor | Chinese/Japanese interface fonts: a test checks every catalog character has a glyph; an installed CJK font follows the embedded faces whenever they miss one; macOS font asset folders searched for PingFang (#486) |
