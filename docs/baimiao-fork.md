@@ -55,7 +55,11 @@ mobile-device acceptance, or production deployment. Maintain the upstream notice
 licences. Before distributing a modified application, remove the ArtCraft marks as required by
 `docs/brand/LICENSE-brand.txt`.
 
-## Local validation results (2026-10-12)
+## Initial local validation results (2026-10-12)
+
+The original synthetic fixtures below had redundant empty `w:rFonts` style nodes. They
+remain useful for the missing-glyph regression, but normal-DOCX pagination comparisons
+should use the normalized follow-up results below.
 
 `cargo xtask ci` passed all six gates (format, strict Clippy, tests, assets, layers and WASM).
 There were 1,492 passing tests, no failures and one upstream-ignored interface translation
@@ -88,8 +92,37 @@ cannot all be assigned to the font patch. Font loading and bundle size need furt
 before website integration. No customer corpus, Safari/Firefox or physical mobile device
 acceptance was performed, and no Baimiao website changes or deployment were made.
 
+## Follow-up soffice comparison (2026-10-12)
+
+The fixture generator had appended a second empty `w:rFonts` node in three styles.
+Removing those duplicate nodes restores the intended Arial/Songti SC input for both native
+engines. All four normalized DOCX files were retested with native WordCraft, actual browser
+file selection/PDF download, and headless soffice (LibreOfficeDev 26.8 alpha).
+
+| Normalized fixture | soffice pages | Fork native pages | Fork web pages |
+|---|---:|---:|---:|
+| English basics | 1 | 1 | 1 |
+| Chinese layout | 3 | 3 | 3 |
+| Image and 80-row table | 5 | 4 | 5 |
+| 240-paragraph document | 31 | 27 | 29 |
+
+All required markers, 80 row numbers and all 480 occurrences of the 240 paragraph numbers
+were retained. The original last-page header clipping did not reproduce with normalized
+input. It should not be described as a general browser-export defect on normal DOCX files.
+Visual review still shows differences in font substitution, paragraph spacing, table rows
+and pagination. Neither engine was measured against Microsoft Word in this run.
+
+Three trials with warmed font/file caches gave native WordCraft single-process medians of
+48–111 ms versus soffice 1.75–1.86 seconds, including process startup and exit. One soffice
+process converting all four files took a median 2.20 seconds total. The native binary is
+the current optimized dev build, not a release benchmark. These measurements do not model
+the website's persistent unoserver service or browser timings, and memory was not uniformly
+lower for WordCraft. Keep the existing formal conversion service while developing the local
+browser option and expanding the acceptance corpus.
+
 ## Revision history
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-12 | minor | Normalize synthetic font styles and compare actual browser/native PDFs with soffice; qualify pagination and startup benchmarks |
 | 2026-10-12 | major | Fork baseline, toolchain, font input and browser regression procedure |
