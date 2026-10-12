@@ -5207,6 +5207,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wordcraft-preview-wasm"
+version = "0.5.0"
+dependencies = [
+ "wasm-bindgen",
+ "wordcraft-doc",
+ "wordcraft-docx",
+ "wordcraft-fonts",
+ "wordcraft-pdf",
+]
+
+[[package]]
 name = "wordcraft-proof"
 version = "0.5.0"
 dependencies = [

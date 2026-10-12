@@ -1,0 +1,23 @@
+[package]
+name = "wordcraft-preview-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Conversion-only DOCX to PDF for browser workers"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+wordcraft-doc = { workspace = true }
+wordcraft-docx = { workspace = true }
+wordcraft-pdf = { workspace = true }
+wordcraft-fonts = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.129"
+

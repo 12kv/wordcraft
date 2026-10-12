@@ -2,7 +2,7 @@
 
 **Stage: alpha** · next: beta, ~15 points (60% → 75% ready for real work) and ~150–230 h away
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-12 · **Change:** minor (Baimiao fork sync and web Chinese font coverage; upstream: Polish interface and Polish proofing; previously trivial: Turkish interface landed; previously trivial: formatting revisions landed, #41; previously trivial: Draw tab ink, #307, and Draw Table and Eraser, #303, landed: catalog 402/434; previously minor: readiness table with hours per audience; full number back to the additive weighted sum, 60%; mainstream and essentials numbers added; alpha gate checked; previously major: full re-measure against Word for Mac 16.113.4; restructured to the craftrules progress-docs standard) · **Target:** Microsoft Word (Microsoft 365) for Mac 16.113.4
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-13 · **Change:** minor (Baimiao conversion-only WASM; earlier fork sync and web Chinese font coverage; upstream: Polish interface and Polish proofing; previously trivial: Turkish interface landed; previously trivial: formatting revisions landed, #41; previously trivial: Draw tab ink, #307, and Draw Table and Eraser, #303, landed: catalog 402/434; previously minor: readiness table with hours per audience; full number back to the additive weighted sum, 60%; mainstream and essentials numbers added; alpha gate checked; previously major: full re-measure against Word for Mac 16.113.4; restructured to the craftrules progress-docs standard) · **Target:** Microsoft Word (Microsoft 365) for Mac 16.113.4
 
 WordCraft aims for complete parity with Microsoft Word, then goes further on speed, openness and
 agent control. This page is the summary; the assessment is
@@ -131,6 +131,7 @@ Ranked, to beta (detail and remaining milestones in [docs/roadmap.md](docs/roadm
 ## Progress log
 
 | Date | What landed |
+| 2026-10-13 | Baimiao fork: conversion-only WASM with a 20 MiB input limit and embedded-glyph coverage gate; four actual browser worker conversions match Node WASM, with zero UNO preview calls. Synthetic validation only; readiness estimates unchanged |
 | 2026-10-12 | Baimiao fork sync: merge upstream main 199ac88 while preserving the Chinese web font fix, pinned Rust toolchain and regression tests |
 | 2026-10-12 | Baimiao fork: web builds embed Simplified Chinese fonts and document fallbacks register them; required builds fail without CJK input. No readiness estimate changed |
 | 2026-10-11 | Hide White Space (#645): `view.hideWhiteSpace` (View › Show checkbox, or double-click the gap between pages) collapses margins, headers and footers between pages to a thin line in Print Layout; screen only, page count unchanged |
@@ -214,6 +215,7 @@ Ranked, to beta (detail and remaining milestones in [docs/roadmap.md](docs/roadm
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-13 | minor | Conversion-only browser module and website preview evidence; no change to upstream parity or production readiness |
 | 2026-10-12 | minor | Baimiao fork sync with upstream main 199ac88; retain fork font coverage and build checks without changing readiness estimates |
 | 2026-10-11 | minor | Czech (`cs`) interface catalog added |
 | 2026-10-11 | trivial | Progress log: German interface (#574) |

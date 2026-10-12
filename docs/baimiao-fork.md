@@ -1,6 +1,6 @@
 # Baimiao development fork
 
-> **Last reviewed:** 2026-10-12 · **Last updated:** 2026-10-12 · **Change:** major (local fork and reproducible browser CJK font development) · **Target:** browser DOCX preview and PDF export
+> **Last reviewed:** 2026-10-13 · **Last updated:** 2026-10-13 · **Change:** minor (conversion-only WASM and browser result-preview validation) · **Target:** browser DOCX preview and PDF export
 
 This fork is based on `storytold/wordcraft` main at
 `1f09547f4e8d59163a355676733e031bcd4180cf` and is hosted at
@@ -139,10 +139,44 @@ WASM module and Baimiao result-preview integration are still follow-up developme
 The development branch and modifications remain local. The GitHub fork has not received
 these commits, and no upstream pull request or deployment was created.
 
+## Conversion-only browser module (2026-10-13)
+
+`apps/wordcraft-preview-wasm` exports `convert_docx_to_pdf` through wasm-bindgen 0.2.129.
+Its dependencies are the document, DOCX, font and PDF crates; the editor UI and GPU are not
+included. It disables system font fallback, rejects compressed input over 20 MiB and returns
+errors for malformed DOCX or text lacking an embedded glyph. The coverage check includes
+body and part text, but does not certify layout, drawing support or every OOXML feature.
+The website runs each conversion in a disposable worker with a 60-second deadline.
+
+Build from the Baimiao website checkout with `yarn word-preview:build`, using this fork and
+the pinned craft-fonts checkout described above. The website script validates font hashes,
+compiles the release module, invokes wasm-bindgen and wasm-opt, and records source/font
+revisions, source fingerprint and artifact hashes. The distributable contains code and
+plain-text license notices, with no editor branding or other upstream GUI assets.
+
+The optimized WASM is 32,506,088 bytes (21,557,009 bytes at gzip level 9). Four normalized
+synthetic fixtures were converted using both Node WASM and the actual website component's
+browser worker; every corresponding PDF is byte-identical. Pages are 1 / 3 / 5 / 29 versus
+soffice's 1 / 3 / 5 / 31. Text extraction retained all expected markers, 80 table rows and 480
+paragraph-marker occurrences. Visual review covered all Chinese pages and first/last pages
+of the table and long document. The whole workspace passes all six CI gates with 1,611 tests
+passing and one upstream-ignored test, including four new wrapper regressions.
+
+The local website branch integrates DOCX result preview with the real Vue component,
+Worker, WASM and PDF.js. Four successful local previews issued zero UNO conversion calls.
+Corrupt and missing-glyph fixtures expose manual cloud retry; they do not automatically
+fall back. Explicit cloud retry and formal translated-PDF export preserve the existing API
+contract, tested with an Axios test response. Direct PDF and PPT routing, file-switch
+cancellation, production asset loading and a 390-pixel toolbar layout were also checked.
+This does not verify the live provider, customer documents, Safari/Firefox, physical phones
+or production CPU savings. Formal export still uses the existing cloud service. Local
+commits have not been pushed or deployed, and no upstream pull request was created.
+
 ## Revision history
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-13 | minor | Add conversion-only WASM, embedded-glyph rejection and actual website worker validation; retain pagination and production limits |
 | 2026-10-12 | minor | Synchronize upstream main 199ac88 and preserve local fork changes; distinguish prior visual results from the updated source tree |
 | 2026-10-12 | minor | Normalize synthetic font styles and compare actual browser/native PDFs with soffice; qualify pagination and startup benchmarks |
 | 2026-10-12 | major | Fork baseline, toolchain, font input and browser regression procedure |
