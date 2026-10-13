@@ -271,3 +271,15 @@ Ranked, to beta (detail and remaining milestones in [docs/roadmap.md](docs/roadm
 | 2026-10-10 | major | Full re-measure; restructured to the progress-docs standard (stage banner, two numbers, dimensions, languages, upcoming, progress log); parity tables moved to `docs/target-app-parity.md`, milestones to `docs/roadmap.md` |
 | 2026-10-09 | minor | Recently landed: RTL, Ukrainian and Brazilian Portuguese |
 | 2026-10-06 | major | First honest estimate: 88% catalog, ~62% real parity, alpha ~85% of the way |
+
+### Baimiao mathematical fallback (2026-10-13)
+
+The optional craft-fonts Regular Zmth face is included in WASM builds and registered for document fallback. A conversion regression covers mathematical operators without system fonts. A supplied DOCX now converts instead of rejecting U+2217; this is font coverage, not full formula layout parity.
+
+### Baimiao recoverable missing glyphs (2026-10-13)
+
+The preview API now reports missing Unicode codepoints, accepts bounded optional font registration, and returns PDF plus completeness metadata. An original craft-fonts last-resort outline font renders unsupported scalars visibly without rewriting document text. It ranks after real fonts and is excluded from completeness scans. Font downloads/cache and user warnings are owned by the Baimiao browser worker/UI. This prevents missing glyphs alone from aborting the preview; complex-script shaping, arbitrary document layout and import fidelity remain separate gaps.
+
+### Baimiao external preview fonts (2026-10-13)
+
+The WASM-only `preview-external-fonts` feature externalizes Inter, BIZ UDPGothic and Noto Sans CJK SC. Preview APIs expose resolved document family names and codepoints for browser selection. Stable fallback priority preserves the prior output: the supplied 38-page PDF remains byte-identical after externalization. Native font embedding is unchanged. Browser assets, cache, integrity checks and transfer measurements are documented in the Baimiao frontend.

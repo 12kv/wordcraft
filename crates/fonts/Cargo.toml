@@ -8,6 +8,9 @@ description = "WordCraft fonts: font database (bundled OFL + system), metrics, g
 [lints]
 workspace = true
 
+[features]
+preview-external-fonts = []
+
 [dependencies]
 kurbo = { workspace = true }
 skrifa = { workspace = true }

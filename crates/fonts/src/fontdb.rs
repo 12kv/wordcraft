@@ -34,8 +34,11 @@ static BUNDLED: &[&[u8]] = &[
     include_bytes!("../../../assets/fonts/SourceSerif4-Semibold.ttf"),
     include_bytes!("../../../assets/fonts/SourceSerif4-Bold.ttf"),
     include_bytes!("../../../assets/fonts/SourceSerif4-BoldIt.ttf"),
+    #[cfg(not(all(target_arch = "wasm32", feature = "preview-external-fonts")))]
     include_bytes!("../../../assets/fonts/Inter-Regular.ttf"),
+    #[cfg(not(all(target_arch = "wasm32", feature = "preview-external-fonts")))]
     include_bytes!("../../../assets/fonts/Inter-Medium.ttf"),
+    #[cfg(not(all(target_arch = "wasm32", feature = "preview-external-fonts")))]
     include_bytes!("../../../assets/fonts/Inter-SemiBold.ttf"),
     include_bytes!("../../../assets/fonts/JetBrainsMono-Regular.ttf"),
 ];
@@ -827,11 +830,15 @@ fn style_italic(style: &str) -> bool {
 
 impl FontDb {
     /// A database holding the bundled fonts, then the craft-fonts Japanese faces (Mincho first)
-    /// and Chinese faces, so document fallbacks also work without system fonts; empty
+    /// and Chinese and mathematical faces, so document fallbacks also work without system fonts; empty
     /// without `CRAFT_FONTS_DIR`. Its system font scan reads `font_dirs`.
     pub fn with_font_dirs(font_dirs: Vec<std::path::PathBuf>) -> Self {
         let mut faces = Vec::new();
-        let craft = crate::japanese_document_fonts().into_iter().chain(crate::chinese_fonts()).map(|f| f.bytes);
+        let craft = crate::japanese_document_fonts()
+            .into_iter()
+            .chain(crate::chinese_fonts())
+            .chain(crate::CRAFT_FONTS.iter().filter(|f| f.scripts.contains(&"Zmth")))
+            .map(|f| f.bytes);
         for data in BUNDLED.iter().copied().chain(craft) {
             for f in enumerate_faces(data) {
                 if let Some(mut face) = make_face(FontBytes::Static(data), f.index, f.family, f.style, f.legacy, f.coords) {
@@ -1354,7 +1361,22 @@ impl FontDb {
         // the script's own families, so syllables reorder and stack (#604).
         let complex = crate::needs_layout_tables(c);
         let shaping = |f: &FontFace| if complex { (!f.has_layout_tables(), crate::fallback_rank(c, &f.family)) } else { (false, 0) };
-        order.sort_by_key(|f| (rank(f), shaping(f), !f.family.eq_ignore_ascii_case(FALLBACK_FAMILY), f.italic, (f.weight - 400.0).abs() as i32));
+        order.sort_by_key(|f| {
+            (
+                f.family == "Baimiao Preview Placeholder",
+                rank(f),
+                shaping(f),
+                !f.family.eq_ignore_ascii_case(FALLBACK_FAMILY),
+                f.italic,
+                (f.weight - 400.0).abs() as i32,
+                // Keep the old bundled-family order regardless of network registration order.
+                #[cfg(all(target_arch = "wasm32", feature = "preview-external-fonts"))]
+                ["Source Sans 3", "Source Serif 4", "Inter", "JetBrains Mono", "BIZ UDPGothic", "Noto Sans CJK SC", "Noto Sans Math"]
+                    .iter()
+                    .position(|name| f.family == *name)
+                    .unwrap_or(7),
+            )
+        });
         (order.into_iter().find(|f| f.covers(c)).cloned(), faces.len())
     }
 

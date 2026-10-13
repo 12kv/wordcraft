@@ -200,3 +200,15 @@ raise readiness estimates. No Word-derived files are fixtures.
 | 2026-10-10 | trivial | Custom table styles round-trip (#256 merged) |
 | 2026-10-10 | major | First version: Word's full format list, read/write status, DOCX element coverage from the source, fidelity and hours |
 | 2026-10-10 | trivial | Freeform shapes and ink as DrawingML custom geometry, read and written (#307) |
+
+### Baimiao WASM mathematical text (2026-10-13)
+
+Regular Zmth fonts from craft-fonts participate in the embedded fallback database. A real supplied DOCX converted to 38 pages; all 837 occurrences across 53 mathematical/Greek/combining character types matched PDF text extraction. Representative symbol pages were visually checked. This validates character preservation for this input, not OMML or Word layout parity.
+
+### Baimiao recoverable missing glyphs (2026-10-13)
+
+The preview API now reports missing Unicode codepoints, accepts bounded optional font registration, and returns PDF plus completeness metadata. An original craft-fonts last-resort outline font renders unsupported scalars visibly without rewriting document text. It ranks after real fonts and is excluded from completeness scans. Font downloads/cache and user warnings are owned by the Baimiao browser worker/UI. This prevents missing glyphs alone from aborting the preview; complex-script shaping, arbitrary document layout and import fidelity remain separate gaps.
+
+### Baimiao external preview fonts (2026-10-13)
+
+The WASM-only `preview-external-fonts` feature externalizes Inter, BIZ UDPGothic and Noto Sans CJK SC. Preview APIs expose resolved document family names and codepoints for browser selection. Stable fallback priority preserves the prior output: the supplied 38-page PDF remains byte-identical after externalization. Native font embedding is unchanged. Browser assets, cache, integrity checks and transfer measurements are documented in the Baimiao frontend.
