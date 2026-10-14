@@ -1,6 +1,6 @@
 # Baimiao development fork
 
-> **Last reviewed:** 2026-10-13 · **Last updated:** 2026-10-13 · **Change:** minor (conversion-only WASM and browser result-preview validation) · **Target:** browser DOCX preview and PDF export
+> **Last reviewed:** 2026-10-13 · **Last updated:** 2026-10-14 · **Change:** minor (conversion-only WASM and browser result-preview validation) · **Target:** browser DOCX preview and PDF export
 
 This fork is based on `storytold/wordcraft` main at
 `1f09547f4e8d59163a355676733e031bcd4180cf` and is hosted at
@@ -180,3 +180,7 @@ commits have not been pushed or deployed, and no upstream pull request was creat
 | 2026-10-12 | minor | Synchronize upstream main 199ac88 and preserve local fork changes; distinguish prior visual results from the updated source tree |
 | 2026-10-12 | minor | Normalize synthetic font styles and compare actual browser/native PDFs with soffice; qualify pagination and startup benchmarks |
 | 2026-10-12 | major | Fork baseline, toolchain, font input and browser regression procedure |
+
+## Synced upstream main (2026-10-14)
+
+Merged `159b84f54c74e9e82fb3109b758ae7dd6f4e3ab0` into the preview branch, retaining the conversion-only crate, bounded input/registration, math font and placeholder support, external-font feature, Chinese fallback and Rust 1.95 toolchain. Upstream adds run-level East Asian fallback, symbol-font decoding, layout fixes and indexed PDF bookmark lookup. Whole-run fallback excludes the catch-all preview placeholder so one missing ideograph cannot hide supported characters; a regression checks the cached miss is replaced after a real font is registered. Strict Clippy compatibility changes are equivalent match guards/Boolean simplifications. Browser integration evidence lives in `baimiao-pdf/docs/local-word-preview.md`.

@@ -173,7 +173,7 @@ pub fn check(crates: &[Crate]) -> Vec<Violation> {
                     Some(Class::Testkit) if d.kind != DepKind::Dev => {
                         out.push(Violation::TestkitAsNormalDep { krate: c.name.clone() });
                     }
-                    // Unregistered deps are reported on their own entry; dev testkit deps are allowed.
+                    // Unregistered deps are reported on their own entry; testkit dev deps are allowed.
                     None | Some(Class::Testkit) => {}
                     Some(dc) => {
                         let to = dc.layer().unwrap_or(u8::MAX);
