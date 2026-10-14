@@ -5,6 +5,27 @@ use wordcraft_doc::Document;
 #[cfg(not(target_arch = "wasm32"))]
 mod safe_save;
 
+/// Does `path` hold a Word 2003 XML Document already (so a plain save keeps that format)?
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn is_word_2003_file(path: &std::path::Path) -> bool {
+    use std::io::Read;
+    if crate::file_access::check_read(&path.to_string_lossy()).is_err() {
+        return false;
+    }
+    let Ok(f) = std::fs::File::open(path) else { return false };
+    let mut head = Vec::new();
+    // The root element and its namespaces come first.
+    if f.take(64 * 1024).read_to_end(&mut head).is_err() {
+        return false;
+    }
+    wordcraft_docx::sniff_xml(&head) == wordcraft_docx::XmlKind::WordMl2003
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn is_word_2003_file(_path: &std::path::Path) -> bool {
+    false
+}
+
 /// Formats WordCraft opens.
 pub const OPEN_EXTS: &[&str] = &[
     "docx",
@@ -51,6 +72,9 @@ pub struct ExportOptions {
     pub markup: bool,
     /// With `markup`, show the comments (Track Changes Options › Comments).
     pub comments: bool,
+    /// An `.xml` copy is a Word 2003 XML Document (WordprocessingML 2003) instead of a Word XML
+    /// Document (Flat OPC): `format: "wordml2003"` on the save commands.
+    pub word2003: bool,
 }
 
 /// A document password: wiped from memory when dropped, never printed (`Debug` shows `***`).
