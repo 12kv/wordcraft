@@ -184,3 +184,18 @@ commits have not been pushed or deployed, and no upstream pull request was creat
 ## Synced upstream main (2026-10-14)
 
 Merged `159b84f54c74e9e82fb3109b758ae7dd6f4e3ab0` into the preview branch, retaining the conversion-only crate, bounded input/registration, math font and placeholder support, external-font feature, Chinese fallback and Rust 1.95 toolchain. Upstream adds run-level East Asian fallback, symbol-font decoding, layout fixes and indexed PDF bookmark lookup. Whole-run fallback excludes the catch-all preview placeholder so one missing ideograph cannot hide supported characters; a regression checks the cached miss is replaced after a real font is registered. Strict Clippy compatibility changes are equivalent match guards/Boolean simplifications. Browser integration evidence lives in `baimiao-pdf/docs/local-word-preview.md`.
+
+
+## Baimiao preview sync (2026-10-15)
+
+Merged main `cd31095163fb7ee1d313d90f23921b396ee75f8c`. Keep the conversion-only wrapper, external preview fonts, mathematical font, delayed placeholder registration, whole-run placeholder exclusion, deterministic fallback and 20 MiB input limit. Upstream now registers all non-Japanese craft fonts; exclude the preview placeholder until conversion needs it. Keep native file sniffing behind the engine I/O boundary using the upstream bounded reader.
+
+Rust 1.95 lint compatibility changes retain existing logic; runtime/browser validation is recorded in the Baimiao PDF website integration documentation.
+
+Validation limitation: with the optional Noto Sans Arabic face, the upstream
+`wordcraft-pdf::tests::right_to_left_text_extracts_in_logical_order` test reports an extra
+Arabic beh in its simulated viewer extraction of the vowel-marked sample. Keep its assertion
+unchanged. The actual Chromium/WASM sample succeeds without missing glyphs; Poppler no longer
+splits the ordinary Arabic words as the previous runtime did, but vowel-mark extraction remains
+imperfect. Do not claim fully passing workspace CI or complete RTL fidelity. Other test and
+gate results are recorded with the website integration evidence.

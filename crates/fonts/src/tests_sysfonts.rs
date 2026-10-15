@@ -162,21 +162,21 @@ fn fallback_lookups_are_remembered_until_fonts_load() {
     let db = FontDb::with_font_dirs(vec![dir]);
     db.set_system_fallback(false);
     let latin = db.face(FALLBACK_FAMILY, "Regular");
-    let thai = 'ก';
-    assert!(db.fallback_for(thai, latin.id()).is_none(), "no bundled Thai font");
+    let missing = '\u{F0000}'; // A cache miss even when optional Thai fonts are bundled.
+    assert!(db.fallback_for(missing, latin.id()).is_none(), "no bundled face covers the private-use probe");
     let a = db.fallback_for('A', latin.id()).unwrap();
     assert_eq!(db.fallback_for('A', latin.id()).unwrap().id(), a.id(), "the same answer from the cache");
     {
         let cache = db.fallbacks.read().unwrap();
         assert_eq!(cache.faces, db.read_faces().len());
-        assert!(cache.map.contains_key(&(thai, latin.id())) && cache.map.contains_key(&('A', latin.id())));
+        assert!(cache.map.contains_key(&(missing, latin.id())) && cache.map.contains_key(&('A', latin.id())));
     }
     // Loading fonts (here, the installed family) makes the remembered answers stale.
     assert_eq!(db.face(FAMILY, "Regular").family, FAMILY);
     assert_eq!(db.fallback_for('A', latin.id()).unwrap().id(), a.id());
     let cache = db.fallbacks.read().unwrap();
     assert_eq!(cache.faces, db.read_faces().len());
-    assert!(!cache.map.contains_key(&(thai, latin.id())), "entries from before the fonts loaded are dropped");
+    assert!(!cache.map.contains_key(&(missing, latin.id())), "entries from before the fonts loaded are dropped");
 }
 
 #[test]
@@ -243,8 +243,8 @@ fn fallback_cache_is_dropped_when_a_face_loads_by_its_legacy_family_name() {
     let db = FontDb::with_font_dirs(vec![dir]);
     db.set_system_fallback(false);
     let latin = db.face(FALLBACK_FAMILY, "Regular");
-    let thai = 'ก';
-    assert!(db.fallback_for(thai, latin.id()).is_none());
+    let missing = '\u{F0000}'; // A cache miss even when optional Thai fonts are bundled.
+    assert!(db.fallback_for(missing, latin.id()).is_none());
     let before = db.read_faces().len();
     let semibold = format!("{FAMILY} Semibold");
     let f = db.face(&semibold, "Regular");
@@ -253,7 +253,7 @@ fn fallback_cache_is_dropped_when_a_face_loads_by_its_legacy_family_name() {
     assert!(db.fallback_for('A', f.id()).is_some_and(|g| g.id() != f.id()));
     let cache = db.fallbacks.read().unwrap();
     assert_eq!(cache.faces, db.read_faces().len());
-    assert!(!cache.map.contains_key(&(thai, latin.id())), "answers from before the load are dropped");
+    assert!(!cache.map.contains_key(&(missing, latin.id())), "answers from before the load are dropped");
 }
 
 #[test]
