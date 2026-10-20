@@ -5,14 +5,10 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-pub const MAX_INPUT_BYTES: usize = 20 * 1024 * 1024;
-
 const PLACEHOLDER: &str = "Baimiao Preview Placeholder";
 
 fn read(bytes: &[u8]) -> Result<wordcraft_doc::Document, String> {
-    if bytes.len() > MAX_INPUT_BYTES {
-        return Err("INPUT_TOO_LARGE: DOCX exceeds 20 MiB".into());
-    }
+    // Package reading bounds decompressed parts, total bytes and XML complexity.
     wordcraft_fonts::FontDb::global().set_system_fallback(false);
     wordcraft_docx::read(bytes).map_err(|e| format!("INVALID_DOCX: {e}"))
 }
@@ -182,8 +178,8 @@ mod tests {
     }
 
     #[test]
-    fn oversized_input_is_rejected_before_parsing() {
-        assert!(convert_docx_to_pdf(&vec![0; MAX_INPUT_BYTES + 1]).unwrap_err().starts_with("INPUT_TOO_LARGE:"));
+    fn large_invalid_input_reaches_package_validation() {
+        assert!(convert_docx_to_pdf(&vec![0; 21 * 1024 * 1024]).unwrap_err().starts_with("INVALID_DOCX:"));
     }
 
     #[test]
