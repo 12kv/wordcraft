@@ -199,3 +199,7 @@ unchanged. The actual Chromium/WASM sample succeeds without missing glyphs; Popp
 splits the ordinary Arabic words as the previous runtime did, but vowel-mark extraction remains
 imperfect. Do not claim fully passing workspace CI or complete RTL fidelity. Other test and
 gate results are recorded with the website integration evidence.
+
+## 2026-10-26 upstream integration
+
+Merged main `2c99a427`, preserving the browser preview contract and its font policy. The upstream Georgian-only web font policy does not replace the preview's mathematical/placeholder embedding and external CJK selection. Wrap-area deduplication retains the upstream additional identity field. The whole-run placeholder exclusion test uses the upstream font-face enumeration bound. Browser artifacts and validation are maintained in the adjacent Baimiao PDF repository.
