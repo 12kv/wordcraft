@@ -164,8 +164,9 @@ mod tests {
     #[test]
     fn document_font_names_include_inherited_and_east_asian_names() {
         let mut doc = wordcraft_doc::Document::from_text("ASCII only");
-        doc.styles.default_chr.font = Some("Inter".into());
-        doc.styles.default_chr.font_ea = Some("Noto Sans CJK SC".into());
+        let styles = std::sync::Arc::make_mut(&mut doc.styles);
+        styles.default_chr.font = Some("Inter".into());
+        styles.default_chr.font_ea = Some("Noto Sans CJK SC".into());
         let bytes = wordcraft_docx::write(&doc).unwrap();
         let names = docx_font_names(&bytes).unwrap();
         assert!(names.lines().any(|name| name == "Inter"));
