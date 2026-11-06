@@ -92,6 +92,11 @@ pub(super) fn proof_issues(
     typing: Option<(usize, usize)>,
     list_item: bool,
 ) -> Vec<(usize, usize, bool)> {
+    // PDF preview never displays editor proofing marks. A compile-time branch lets LTO remove
+    // the spelling/grammar engines and their word lists; language runs and hyphenation stay.
+    if cfg!(all(target_arch = "wasm32", feature = "preview-no-proofing")) {
+        return Vec::new();
+    }
     paragraph_issues(p, runs, &opts.spelling, opts.grammar, list_item)
         .into_iter()
         .map(|i| (i.start, i.end, i.kind == wordcraft_proof::IssueKind::Grammar))

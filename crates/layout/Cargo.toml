@@ -8,6 +8,11 @@ description = "WordCraft layout: shaping, line breaking, tabs, lists, tables, pa
 [lints]
 workspace = true
 
+[features]
+# Conversion-only browser workers do not display editor spelling/grammar squiggles.
+# Native builds retain proofing even when a workspace build unifies this feature.
+preview-no-proofing = []
+
 [dependencies]
 wordcraft-geom = { workspace = true, features = ["image"] }
 wordcraft-doc = { workspace = true }

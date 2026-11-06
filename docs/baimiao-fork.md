@@ -203,3 +203,7 @@ gate results are recorded with the website integration evidence.
 ## 2026-10-26 upstream integration
 
 Merged main `2c99a427`, preserving the browser preview contract and its font policy. The upstream Georgian-only web font policy does not replace the preview's mathematical/placeholder embedding and external CJK selection. Wrap-area deduplication retains the upstream additional identity field. The whole-run placeholder exclusion test uses the upstream font-face enumeration bound. Browser artifacts and validation are maintained in the adjacent Baimiao PDF repository.
+
+## Conversion-only proofing (2026-11-06)
+
+The wasm32 preview wrapper opts into `wordcraft-layout/preview-no-proofing`: editor spelling/grammar squiggles are compiled out of this artifact, while language runs, dictionary/pattern/rule-based hyphenation and document settings remain active. Native proofing is unchanged, even with the feature selected. Use the scoped `cargo build -p wordcraft-preview-wasm --target wasm32-unknown-unknown` build; Cargo feature unification would also disable squiggles in a web editor built in the same invocation. The Baimiao build keeps the pinned craft-i18n input, verifies retained hyphenation payloads and excluded SCOWL spelling payloads in the optimized WASM, and records `proofingMode: hyphenation-only` in the runtime manifest.
